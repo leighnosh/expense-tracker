@@ -1,4 +1,5 @@
-const User = require('../models/user');
+const bcrypt = require("bcrypt");
+const User = require("../models/user");
 
 exports.createUser = async (req, res) => {
   try {
@@ -6,15 +7,20 @@ exports.createUser = async (req, res) => {
 
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
-      console.log('Email already exists');
-      return res.status(400).json({ message: 'Email already exists' });
+      console.log("Email already exists");
+      return res.status(400).json({ message: "Email already exists" });
     }
 
-    const newUser = await User.create({ name, email, password });
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = await User.create({
+      name,
+      email,
+      password: hashedPassword,
+    });
     res.status(201).json(newUser);
   } catch (error) {
-    console.error('Error creating new user: ', error);
-    res.status(500).json({ message: 'Error creating new user' });
+    console.error("Error creating new user: ", error);
+    res.status(500).json({ message: "Error creating new user" });
   }
 };
 
@@ -27,18 +33,19 @@ exports.loginUser = async (req, res) => {
     if (!user) {
       return res
         .status(404)
-        .json({ userExists: false, message: 'User does not exist' });
+        .json({ userExists: false, message: "User does not exist" });
     }
-
-    if (user.password !== password) {
+    
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    if (!passwordMatch) {
       return res
         .status(401)
-        .json({ passwordMatch: false, message: 'Incorrect password' });
+        .json({ passwordMatch: false, message: "Incorrect password" });
     }
 
     res.json({ userExists: true, passwordMatch: true });
   } catch (error) {
-    console.error('Error logging in:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("Error logging in:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
